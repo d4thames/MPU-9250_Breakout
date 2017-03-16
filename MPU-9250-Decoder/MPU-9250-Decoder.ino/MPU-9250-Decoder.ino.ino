@@ -7,8 +7,7 @@
 
  Demonstrate basic MPU-9250 functionality including parameterizing the register
  addresses, initializing the sensor, getting properly scaled accelerometer,
- gyroscope, and magnetometer data out. Added display functions to allow display
- to on breadboard monitor. Addition of 9 DoF sensor fusion using open source
+ gyroscope, and magnetometer data out. Addition of 9 DoF sensor fusion using open source
  Madgwick and Mahony filter algorithms. Sketch runs on the 3.3 V 8 MHz Pro Mini
  and the Teensy 3.1.
 
@@ -26,19 +25,6 @@
 
 #include "quaternionFilters.h"
 #include "MPU9250.h"
-
-#ifdef LCD
-#include <Adafruit_GFX.h>
-#include <Adafruit_PCD8544.h>
-
-// Using NOKIA 5110 monochrome 84 x 48 pixel display
-// pin 9 - Serial clock out (SCLK)
-// pin 8 - Serial data out (DIN)
-// pin 7 - Data/Command select (D/C)
-// pin 5 - LCD chip select (CS)
-// pin 6 - LCD reset (RST)
-Adafruit_PCD8544 display = Adafruit_PCD8544(9, 8, 7, 5, 6);
-#endif // LCD
 
 #define AHRS true         // Set to false for basic data read
 #define SerialDebug true  // Set to true to get Serial output for debugging
@@ -61,41 +47,12 @@ void setup()
   pinMode(myLed, OUTPUT);
   digitalWrite(myLed, HIGH);
 
-#ifdef LCD
-  display.begin(); // Ini8ialize the display
-  display.setContrast(58); // Set the contrast
-
-  // Start device display with ID of sensor
-  display.clearDisplay();
-  display.setTextSize(2);
-  display.setCursor(0,0); display.print("MPU9250");
-  display.setTextSize(1);
-  display.setCursor(0, 20); display.print("9-DOF 16-bit");
-  display.setCursor(0, 30); display.print("motion sensor");
-  display.setCursor(20,40); display.print("60 ug LSB");
-  display.display();
-  delay(1000);
-
-  // Set up for data display
-  display.setTextSize(1); // Set text size to normal, 2 is twice normal etc.
-  display.setTextColor(BLACK); // Set pixel color; 1 on the monochrome screen
-  display.clearDisplay();   // clears the screen and buffer
-#endif // LCD
 
   // Read the WHO_AM_I register, this is a good test of communication
   byte c = myIMU.readByte(MPU9250_ADDRESS, WHO_AM_I_MPU9250);
   Serial.print("MPU9250 "); Serial.print("I AM "); Serial.print(c, HEX);
   Serial.print(" I should be "); Serial.println(0x71, HEX);
 
-#ifdef LCD
-  display.setCursor(20,0); display.print("MPU9250");
-  display.setCursor(0,10); display.print("I AM");
-  display.setCursor(0,20); display.print(c, HEX);
-  display.setCursor(0,30); display.print("I Should Be");
-  display.setCursor(0,40); display.print(0x71, HEX);
-  display.display();
-  delay(1000);
-#endif // LCD
 
   if (c == 0x73) // WHO_AM_I should always be 0x68
   {
@@ -119,25 +76,6 @@ void setup()
     // Calibrate gyro and accelerometers, load biases in bias registers
     myIMU.calibrateMPU9250(myIMU.gyroBias, myIMU.accelBias);
 
-#ifdef LCD
-    display.clearDisplay();
-
-    display.setCursor(0, 0); display.print("MPU9250 bias");
-    display.setCursor(0, 8); display.print(" x   y   z  ");
-
-    display.setCursor(0,  16); display.print((int)(1000*accelBias[0]));
-    display.setCursor(24, 16); display.print((int)(1000*accelBias[1]));
-    display.setCursor(48, 16); display.print((int)(1000*accelBias[2]));
-    display.setCursor(72, 16); display.print("mg");
-
-    display.setCursor(0,  24); display.print(myIMU.gyroBias[0], 1);
-    display.setCursor(24, 24); display.print(myIMU.gyroBias[1], 1);
-    display.setCursor(48, 24); display.print(myIMU.gyroBias[2], 1);
-    display.setCursor(66, 24); display.print("o/s");
-
-    display.display();
-    delay(1000);
-#endif // LCD
 
     myIMU.initMPU9250();
     // Initialize device for active mode read of acclerometer, gyroscope, and
@@ -150,16 +88,6 @@ void setup()
     Serial.print("AK8963 "); Serial.print("I AM "); Serial.print(d, HEX);
     Serial.print(" I should be "); Serial.println(0x48, HEX);
 
-#ifdef LCD
-    display.clearDisplay();
-    display.setCursor(20,0); display.print("AK8963");
-    display.setCursor(0,10); display.print("I AM");
-    display.setCursor(0,20); display.print(d, HEX);
-    display.setCursor(0,30); display.print("I Should Be");
-    display.setCursor(0,40); display.print(0x48, HEX);
-    display.display();
-    delay(1000);
-#endif // LCD
 
     // Get magnetometer calibration from AK8963 ROM
     myIMU.initAK8963(myIMU.magCalibration);
@@ -176,19 +104,9 @@ void setup()
       Serial.println(myIMU.magCalibration[2], 2);
     }
 
-#ifdef LCD
-    display.clearDisplay();
-    display.setCursor(20,0); display.print("AK8963");
-    display.setCursor(0,10); display.print("ASAX "); display.setCursor(50,10);
-    display.print(myIMU.magCalibration[0], 2);
-    display.setCursor(0,20); display.print("ASAY "); display.setCursor(50,20);
-    display.print(myIMU.magCalibration[1], 2);
-    display.setCursor(0,30); display.print("ASAZ "); display.setCursor(50,30);
-    display.print(myIMU.magCalibration[2], 2);
-    display.display();
-    delay(1000);
-#endif // LCD
-  } // if (c == 0x71)
+
+  } 
+  if (c == 0x73)
   else
   {
     Serial.print("Could not connect to MPU9250: 0x");
@@ -271,15 +189,11 @@ void loop()
                     - *(getQ()+2) * *(getQ()+2) + *(getQ()+3) * *(getQ()+3));
       myIMU.pitch *= RAD_TO_DEG;
       myIMU.yaw   *= RAD_TO_DEG;
-      // Declination of SparkFun Electronics (40°05'26.6"N 105°11'05.9"W) is
-      // 	8° 30' E  ± 0° 21' (or 8.5°) on 2016-07-19
-      // - http://www.ngdc.noaa.gov/geomag-web/#declination
+      
       myIMU.yaw   -= 8.5;
       myIMU.roll  *= RAD_TO_DEG;
 
-      #define PITCH_S 0xF1
-      #define ROLL_S  0xF2
-      #define YAW_S   0xF3
+      
 
       pitch_send = (uint16_t) map(myIMU.pitch, -180, 180, 0, 65536);
       roll_send = (uint16_t) map(myIMU.roll, -180, 180, 0, 65536);
@@ -288,7 +202,11 @@ void loop()
       pitch_send = (uint16_t) map(myIMU.pitch, -180, 180, 0, 65536);
       roll_send = (uint16_t) map(myIMU.roll, -180, 180, 0, 65536);
       yaw_send = (uint16_t) map(myIMU.yaw, -180, 180, 0, 65536);
-    
+      
+      #define PITCH_S 0xF1
+      #define ROLL_S  0xF2
+      #define YAW_S   0xF3
+ 
       Serial.write(PITCH_S);
       Serial.write((char) pitch_send >> 8);
       Serial.write((char) pitch_send);
